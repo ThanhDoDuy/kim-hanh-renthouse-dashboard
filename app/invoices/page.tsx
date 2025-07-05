@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,65 +8,38 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Check, Send, FileText } from "lucide-react"
+import { Eye, Check, Send, FileText, Plus } from "lucide-react"
+import { invoiceService } from "@/lib/api/services"
+import { Invoice, InvoiceResponse } from "@/lib/api/types"
+import { toast } from "sonner"
 
-// Mock data
-const invoices = [
-  {
-    id: 1,
-    room: "101",
-    tenant: "Nguyễn Văn A",
-    month: "2024-01",
-    roomRent: 3500000,
-    electricCost: 150000,
-    waterCost: 60000,
-    otherFees: 100000,
-    total: 3810000,
-    status: "paid",
-    paidDate: "2024-01-15",
-    dueDate: "2024-01-31",
-  },
-  {
-    id: 2,
-    room: "102",
-    tenant: "Trần Thị B",
-    month: "2024-01",
-    roomRent: 3500000,
-    electricCost: 125000,
-    waterCost: 60000,
-    otherFees: 100000,
-    total: 3785000,
-    status: "unpaid",
-    paidDate: null,
-    dueDate: "2024-01-31",
-  },
-  {
-    id: 3,
-    room: "103",
-    tenant: "Lê Văn C",
-    month: "2024-01",
-    roomRent: 3800000,
-    electricCost: 180000,
-    waterCost: 75000,
-    otherFees: 100000,
-    total: 4155000,
-    status: "overdue",
-    paidDate: null,
-    dueDate: "2024-01-31",
-  },
-]
+function getRecentMonths(count: number = 12) {
+  const months = []
+  const today = new Date()
+  
+  for (let i = 0; i < count; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
+    const monthNum = date.getMonth() + 1
+    const year = date.getFullYear()
+    const month = `${year}-${monthNum.toString().padStart(2, '0')}`
+    const label = `Tháng ${monthNum}/${year}`
+    months.push({ value: month, label })
+  }
+  
+  return months
+}
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case "paid":
+    case "PAID":
       return (
         <Badge variant="default" className="bg-green-500">
           Đã thanh toán
         </Badge>
       )
-    case "unpaid":
+    case "PENDING":
       return <Badge variant="secondary">Chưa thanh toán</Badge>
-    case "overdue":
+    case "OVERDUE":
       return <Badge variant="destructive">Quá hạn</Badge>
     default:
       return <Badge variant="outline">Không xác định</Badge>
@@ -74,23 +47,77 @@ function getStatusBadge(status: string) {
 }
 
 export default function InvoicesPage() {
-  const [selectedMonth, setSelectedMonth] = useState("2024-01")
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const today = new Date()
+    const month = today.getMonth() + 1
+    const year = today.getFullYear()
+    return `${year}-${month.toString().padStart(2, '0')}`
+  })
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [summary, setSummary] = useState<InvoiceResponse['summary'] | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isGenerating, setIsGenerating] = useState(false)
 
-  const handleViewInvoice = (invoice: any) => {
+  const months = getRecentMonths()
+
+  useEffect(() => {
+    loadInvoices()
+  }, [selectedMonth])
+
+  const loadInvoices = async () => {
+    try {
+      setIsLoading(true)
+      const response = await invoiceService.getByMonth(selectedMonth)
+      setInvoices(response.data)
+      setSummary(response.summary)
+    } catch (error) {
+      console.error('Failed to load invoices:', error)
+      toast.error('Không thể tải danh sách hóa đơn')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGenerateInvoices = async () => {
+    try {
+      setIsGenerating(true)
+      await invoiceService.generateMonth(selectedMonth)
+      toast.success('Đã tạo hóa đơn thành công')
+      loadInvoices()
+    } catch (error) {
+      console.error('Failed to generate invoices:', error)
+      toast.error('Không thể tạo hóa đơn')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice)
     setIsViewDialogOpen(true)
   }
 
-  const handleMarkAsPaid = (invoiceId: number) => {
-    // API call to mark invoice as paid
-    console.log("Marking invoice as paid:", invoiceId)
+  const handleMarkAsPaid = async (invoiceId: string) => {
+    try {
+      await invoiceService.markAsPaid(invoiceId)
+      toast.success('Đã cập nhật trạng thái thanh toán')
+      loadInvoices()
+    } catch (error) {
+      console.error('Failed to mark invoice as paid:', error)
+      toast.error('Không thể cập nhật trạng thái thanh toán')
+    }
   }
 
-  const handleSendReminder = (invoiceId: number) => {
-    // API call to send reminder
-    console.log("Sending reminder for invoice:", invoiceId)
+  const handleSendReminder = async (invoiceId: string) => {
+    try {
+      await invoiceService.sendReminder(invoiceId)
+      toast.success('Đã gửi nhắc nhở thanh toán')
+    } catch (error) {
+      console.error('Failed to send reminder:', error)
+      toast.error('Không thể gửi nhắc nhở')
+    }
   }
 
   return (
@@ -100,16 +127,28 @@ export default function InvoicesPage() {
           <SidebarTrigger />
           <h2 className="text-3xl font-bold tracking-tight">Hóa đơn và thanh toán</h2>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2024-01">Tháng 1/2024</SelectItem>
-            <SelectItem value="2023-12">Tháng 12/2023</SelectItem>
-            <SelectItem value="2023-11">Tháng 11/2023</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleGenerateInvoices} 
+            disabled={isGenerating}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {isGenerating ? 'Đang tạo...' : 'Tạo hóa đơn tháng'}
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -120,8 +159,10 @@ export default function InvoicesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{invoices.length}</div>
-            <p className="text-xs text-muted-foreground">Tháng {selectedMonth}</p>
+            <div className="text-2xl font-bold">{summary?.total || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Tổng tiền: {(summary?.totalAmount || 0).toLocaleString("vi-VN")}đ
+            </p>
           </CardContent>
         </Card>
 
@@ -131,11 +172,9 @@ export default function InvoicesPage() {
             <Check className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {invoices.filter((inv) => inv.status === "paid").length}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{summary?.paid || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {((invoices.filter((inv) => inv.status === "paid").length / invoices.length) * 100).toFixed(1)}% tổng số
+              Đã thu: {(summary?.paidAmount || 0).toLocaleString("vi-VN")}đ
             </p>
           </CardContent>
         </Card>
@@ -146,75 +185,83 @@ export default function InvoicesPage() {
             <Send className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {invoices.filter((inv) => inv.status !== "paid").length}
-            </div>
-            <p className="text-xs text-muted-foreground">Cần thu tiền</p>
+            <div className="text-2xl font-bold text-red-600">{(summary?.pending || 0) + (summary?.overdue || 0)}</div>
+            <p className="text-xs text-muted-foreground">
+              Cần thu: {(summary?.pendingAmount || 0).toLocaleString("vi-VN")}đ
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách hóa đơn tháng {selectedMonth}</CardTitle>
+          <CardTitle>
+            Danh sách hóa đơn tháng {selectedMonth.split('-')[1]}/{selectedMonth.split('-')[0]}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Phòng</TableHead>
-                <TableHead>Người thuê</TableHead>
-                <TableHead className="text-right">Tiền phòng</TableHead>
-                <TableHead className="text-right">Tiền điện</TableHead>
-                <TableHead className="text-right">Tiền nước</TableHead>
-                <TableHead className="text-right">Phí khác</TableHead>
-                <TableHead className="text-right">Tổng cộng</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead className="text-right">Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">Phòng {invoice.room}</TableCell>
-                  <TableCell>{invoice.tenant}</TableCell>
-                  <TableCell className="text-right">{invoice.roomRent.toLocaleString("vi-VN")}đ</TableCell>
-                  <TableCell className="text-right">{invoice.electricCost.toLocaleString("vi-VN")}đ</TableCell>
-                  <TableCell className="text-right">{invoice.waterCost.toLocaleString("vi-VN")}đ</TableCell>
-                  <TableCell className="text-right">{invoice.otherFees.toLocaleString("vi-VN")}đ</TableCell>
-                  <TableCell className="text-right font-bold">{invoice.total.toLocaleString("vi-VN")}đ</TableCell>
-                  <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleViewInvoice(invoice)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {invoice.status !== "paid" && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-green-600 bg-transparent"
-                            onClick={() => handleMarkAsPaid(invoice.id)}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-blue-600 bg-transparent"
-                            onClick={() => handleSendReminder(invoice.id)}
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
+          {isLoading ? (
+            <div className="text-center py-4">Đang tải...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Phòng</TableHead>
+                  <TableHead className="text-right">Tiền phòng</TableHead>
+                  <TableHead className="text-right">Tiền điện</TableHead>
+                  <TableHead className="text-right">Tiền nước</TableHead>
+                  <TableHead className="text-right">Phí khác</TableHead>
+                  <TableHead className="text-right">Tổng cộng</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invoices?.map((invoice) => (
+                  <TableRow key={invoice.invoiceId}>
+                    <TableCell className="font-medium">
+                      {invoice.roomName}
+                    </TableCell>
+                    <TableCell className="text-right">{invoice.roomCharge.toLocaleString("vi-VN")}đ</TableCell>
+                    <TableCell className="text-right">{invoice.electricityCharge.toLocaleString("vi-VN")}đ</TableCell>
+                    <TableCell className="text-right">{invoice.waterCharge.toLocaleString("vi-VN")}đ</TableCell>
+                    <TableCell className="text-right">{invoice.otherCharges.toLocaleString("vi-VN")}đ</TableCell>
+                    <TableCell className="text-right font-bold">{invoice.totalAmount.toLocaleString("vi-VN")}đ</TableCell>
+                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewInvoice(invoice)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {invoice.status !== "PAID" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 bg-transparent"
+                              onClick={() => handleMarkAsPaid(invoice.invoiceId)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            {/* Temporarily disabled reminder button
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 bg-transparent"
+                              onClick={() => handleSendReminder(invoice.invoiceId)}
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                            */}
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -228,21 +275,17 @@ export default function InvoicesPage() {
             <div className="grid gap-4 py-4">
               <div className="text-center border-b pb-4">
                 <h3 className="text-lg font-bold">HÓA ĐƠN TIỀN PHÒNG</h3>
-                <p className="text-sm text-muted-foreground">Tháng {selectedInvoice.month}</p>
+                <p className="text-sm text-muted-foreground">
+                  Tháng {selectedMonth.split('-')[1]}/{selectedMonth.split('-')[0]}
+                </p>
               </div>
 
               <div className="grid gap-3">
                 <div className="flex justify-between">
                   <span>Phòng:</span>
-                  <span className="font-medium">Phòng {selectedInvoice.room}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Người thuê:</span>
-                  <span className="font-medium">{selectedInvoice.tenant}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Hạn thanh toán:</span>
-                  <span className="font-medium">{selectedInvoice.dueDate}</span>
+                  <span className="font-medium">
+                    {selectedInvoice.roomName}
+                  </span>
                 </div>
               </div>
 
@@ -250,47 +293,33 @@ export default function InvoicesPage() {
                 <div className="grid gap-2">
                   <div className="flex justify-between">
                     <span>Tiền phòng:</span>
-                    <span>{selectedInvoice.roomRent.toLocaleString("vi-VN")}đ</span>
+                    <span>{selectedInvoice.roomCharge.toLocaleString("vi-VN")}đ</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tiền điện:</span>
-                    <span>{selectedInvoice.electricCost.toLocaleString("vi-VN")}đ</span>
+                    <span>{selectedInvoice.electricityCharge.toLocaleString("vi-VN")}đ</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tiền nước:</span>
-                    <span>{selectedInvoice.waterCost.toLocaleString("vi-VN")}đ</span>
+                    <span>{selectedInvoice.waterCharge.toLocaleString("vi-VN")}đ</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Phí khác:</span>
-                    <span>{selectedInvoice.otherFees.toLocaleString("vi-VN")}đ</span>
+                    <span>{selectedInvoice.otherCharges.toLocaleString("vi-VN")}đ</span>
                   </div>
-                  <div className="flex justify-between border-t pt-2 font-bold text-lg">
+                  <div className="flex justify-between font-bold pt-2 border-t">
                     <span>Tổng cộng:</span>
-                    <span>{selectedInvoice.total.toLocaleString("vi-VN")}đ</span>
+                    <span>{selectedInvoice.totalAmount.toLocaleString("vi-VN")}đ</span>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center">
-                  <span>Trạng thái:</span>
-                  {getStatusBadge(selectedInvoice.status)}
-                </div>
-                {selectedInvoice.paidDate && (
-                  <div className="flex justify-between mt-2">
-                    <span>Ngày thanh toán:</span>
-                    <span className="font-medium">{selectedInvoice.paidDate}</span>
-                  </div>
-                )}
+              <div className="flex justify-between items-center pt-4 border-t">
+                <div className="text-sm text-muted-foreground">Trạng thái:</div>
+                {getStatusBadge(selectedInvoice.status)}
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Đóng
-            </Button>
-            <Button>In hóa đơn</Button>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

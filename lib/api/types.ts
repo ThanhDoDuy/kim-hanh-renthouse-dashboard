@@ -54,24 +54,59 @@ export interface CreateRoomDto {
 
 // Invoice Types
 export interface Invoice {
-  id: number
-  roomId: number
-  tenantId: number
-  amount: number
-  dueDate: string
-  status: 'paid' | 'unpaid' | 'overdue'
-  createdAt: string
-  paidAt?: string
+  roomName: string
+  roomCharge: number
+  electricityCharge: number
+  waterCharge: number
+  otherCharges: number
+  totalAmount: number
+  invoiceId: string
+  status: 'PENDING' | 'PAID' | 'OVERDUE'
+}
+
+export interface InvoiceResponse {
+  data: Invoice[]
+  summary: {
+    total: number
+    paid: number
+    pending: number
+    overdue: number
+    totalAmount: number
+    paidAmount: number
+    pendingAmount: number
+  }
 }
 
 // Dashboard Types
 export interface DashboardStats {
+  // Tổng quan phòng
   totalRooms: number
   occupiedRooms: number
   emptyRooms: number
-  overdueRooms: number
+  
+  // Doanh thu
   monthlyRevenue: number
+  revenueGrowth: number // Phần trăm tăng/giảm so với tháng trước
+  
+  // Phòng nợ tiền
+  overdueRooms: number
+  urgentCollections: boolean // Cần thu tiền gấp
+  
+  // Thống kê hóa đơn
   unpaidInvoices: number
+}
+
+export interface RoomStatusItem {
+  roomNumber: string
+  status: RoomStatus
+  tenantName: string | null
+  price: number
+}
+
+export interface DashboardResponse {
+  stats: DashboardStats
+  roomStatusList: RoomStatusItem[]
+  unpaidInvoices: Invoice[]
 }
 
 // API Response Types
@@ -95,16 +130,16 @@ export interface ApiError {
 export interface UtilityReading {
   _id: string
   room: Room | string
-  month: string // Format: YYYY-MM
+  month: string
   electricityStart: number
-  electricityEnd?: number
-  electricityConsumption?: number
+  electricityEnd: number | null
+  electricityConsumption: number | null
   waterStart: number
-  waterEnd?: number
-  waterConsumption?: number
+  waterEnd: number | null
+  waterConsumption: number | null
   isDeleted: boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
 export type CreateUtilityReadingDto = {
@@ -117,3 +152,17 @@ export type CreateUtilityReadingDto = {
 }
 
 export type UpdateUtilityReadingDto = Partial<CreateUtilityReadingDto> 
+
+// Settings Types
+export interface Settings {
+  _id: string
+  electricityUnitPrice: number    // Giá điện (VND/kWh)
+  waterUnitPrice: number         // Giá nước (VND/m3)
+  garbageCharge: number         // Phí rác (VND/phòng/tháng)
+  isDeleted: boolean
+  createdAt: string
+  updatedAt: string
+  __v: number
+}
+
+export type UpdateSettingsDto = Pick<Settings, 'electricityUnitPrice' | 'waterUnitPrice' | 'garbageCharge'>

@@ -1,4 +1,4 @@
-import { ApiResponse } from './types'
+import { ApiResponse, InvoiceResponse } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
@@ -16,15 +16,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
 
   const data = await response.json()
-  // Nếu response là array, trả về trực tiếp
+  // If the response type is InvoiceResponse, return the whole object
+  if (data && typeof data === 'object' && 'data' in data && 'summary' in data) {
+    return data as T
+  }
+  // If response is array, return directly
   if (Array.isArray(data)) {
     return data as T
   }
-  // Nếu response là object và có field data, trả về data
+  // If response is object and has data field, return data
   if (data && typeof data === 'object' && 'data' in data) {
     return data.data
   }
-  // Trường hợp khác trả về nguyên response
+  // Otherwise return the whole response
   return data
 }
 
