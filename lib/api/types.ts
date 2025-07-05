@@ -90,4 +90,30 @@ export interface PaginatedResponse<T> {
 export interface ApiError {
   message: string
   status: number
-} 
+}
+
+export interface UtilityReading {
+  _id: string
+  room: Room | string
+  month: string // Format: YYYY-MM
+  electricityStart: number
+  electricityEnd?: number
+  electricityConsumption?: number
+  waterStart: number
+  waterEnd?: number
+  waterConsumption?: number
+  isDeleted: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type CreateUtilityReadingDto = {
+  room: string
+  month: string
+  electricityStart: number
+  electricityEnd?: number
+  waterStart: number
+  waterEnd?: number
+}
+
+export type UpdateUtilityReadingDto = Partial<CreateUtilityReadingDto> 

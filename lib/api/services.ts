@@ -8,6 +8,9 @@ import type {
   PaginatedResponse,
   CreateRoomDto,
   CreateTenantDto,
+  UtilityReading,
+  CreateUtilityReadingDto,
+  UpdateUtilityReadingDto,
 } from "./types"
 // Dashboard Services
 export const dashboardService = {
@@ -47,4 +50,13 @@ export const invoiceService = {
   markAsPaid: (id: number) => api.put<Invoice>(`/invoices/${id}/pay`, {}),
   getByRoom: (roomId: number) => api.get<Invoice[]>(`/rooms/${roomId}/invoices`),
   getByTenant: (tenantId: number) => api.get<Invoice[]>(`/tenants/${tenantId}/invoices`),
-} 
+}
+
+export const utilityReadingService = {
+  getAll: () => api.get<UtilityReading[]>("/utility-readings"),
+  getByMonth: (month: string) => api.get<UtilityReading[]>(`/utility-readings?month=${month}`),
+  getById: (id: string) => api.get<UtilityReading>(`/utility-readings/${id}`),
+  create: (data: CreateUtilityReadingDto) => api.post<UtilityReading>("/utility-readings", data),
+  update: (id: string, data: UpdateUtilityReadingDto) => api.put<UtilityReading>(`/utility-readings/${id}`, data),
+  delete: (id: string) => api.delete<void>(`/utility-readings/${id}`),
+}
