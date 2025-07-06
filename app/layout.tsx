@@ -15,7 +15,7 @@ export default function RootLayout({
         <SidebarProvider>
           <AppSidebar />
           <SidebarInset>{children}</SidebarInset>
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="top-center" />
         </SidebarProvider>
       </body>
     </html>

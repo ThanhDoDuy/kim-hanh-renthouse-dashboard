@@ -2,15 +2,21 @@ import { api } from "./api-client"
 import type {
   DashboardStats,
   Room,
-  RoomStatus,
   Tenant,
   Invoice,
-  PaginatedResponse,
   CreateRoomDto,
   CreateTenantDto,
+  UtilityReading,
+  CreateUtilityReadingDto,
+  UpdateUtilityReadingDto,
+  InvoiceResponse,
+  DashboardResponse,
+  Settings,
+  UpdateSettingsDto,
 } from "./types"
 // Dashboard Services
 export const dashboardService = {
+  getDashboard: () => api.get<DashboardResponse>('/dashboard'),
   getStats: () => api.get<DashboardStats>('/dashboard/stats'),
   getRecentRooms: () => api.get<Room[]>('/dashboard/recent-rooms'),
   getUnpaidInvoices: () => api.get<Invoice[]>('/dashboard/unpaid-invoices'),
@@ -38,13 +44,29 @@ export const tenantService = {
 
 // Invoice Services
 export const invoiceService = {
-  getAll: (page = 1, pageSize = 10) =>
-    api.get<PaginatedResponse<Invoice>>(`/invoices?page=${page}&pageSize=${pageSize}`),
-  getById: (id: number) => api.get<Invoice>(`/invoices/${id}`),
-  create: (data: Omit<Invoice, 'id'>) => api.post<Invoice>('/invoices', data),
-  update: (id: number, data: Partial<Invoice>) => api.put<Invoice>(`/invoices/${id}`, data),
-  delete: (id: number) => api.delete<void>(`/invoices/${id}`),
-  markAsPaid: (id: number) => api.put<Invoice>(`/invoices/${id}/pay`, {}),
-  getByRoom: (roomId: number) => api.get<Invoice[]>(`/rooms/${roomId}/invoices`),
-  getByTenant: (tenantId: number) => api.get<Invoice[]>(`/tenants/${tenantId}/invoices`),
-} 
+  getAll: () => api.get<InvoiceResponse>('/invoices'),
+  getById: (id: string) => api.get<Invoice>(`/invoices/${id}`),
+  create: (data: Omit<Invoice, 'invoiceId'>) => api.post<Invoice>('/invoices', data),
+  update: (id: string, data: Partial<Invoice>) => api.put<Invoice>(`/invoices/${id}`, data),
+  delete: (id: string) => api.delete<void>(`/invoices/${id}`),
+  markAsPaid: (id: string) => api.put<Invoice>(`/invoices/${id}/mark-paid`, {}),
+  sendReminder: (id: string) => api.post<void>(`/invoices/${id}/send-reminder`, {}),
+  getByRoom: (roomId: string) => api.get<Invoice[]>(`/rooms/${roomId}/invoices`),
+  getByTenant: (tenantId: string) => api.get<Invoice[]>(`/tenants/${tenantId}/invoices`),
+  getByMonth: (month: string) => api.get<InvoiceResponse>(`/invoices?month=${month}`),
+  generateMonth: (month: string) => api.post<void>(`/invoices/generate-month`, { month }),
+}
+
+export const utilityReadingService = {
+  getAll: () => api.get<UtilityReading[]>("/utility-readings"),
+  getByMonth: (month: string) => api.get<UtilityReading[]>(`/utility-readings?month=${month}`),
+  getById: (id: string) => api.get<UtilityReading>(`/utility-readings/${id}`),
+  create: (data: CreateUtilityReadingDto) => api.post<UtilityReading>("/utility-readings", data),
+  update: (id: string, data: UpdateUtilityReadingDto) => api.put<UtilityReading>(`/utility-readings/${id}`, data),
+  delete: (id: string) => api.delete<void>(`/utility-readings/${id}`),
+}
+
+export const settingsService = {
+  get: () => api.get<Settings>('/house-settings'),
+  update: (data: UpdateSettingsDto) => api.put<Settings>('/house-settings', data),
+}

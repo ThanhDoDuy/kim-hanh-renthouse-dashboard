@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Building2, Home, Receipt, Users, Zap } from "lucide-react"
+import { Building2, Home, Receipt, Settings, Users, Zap } from "lucide-react"
 
 import {
   Sidebar,
@@ -16,11 +16,6 @@ import {
 import Link from "next/link"
 
 const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
   {
     title: "Quản lý phòng",
     url: "/rooms",
@@ -42,9 +37,9 @@ const menuItems = [
     icon: Receipt,
   },
   {
-    title: "Báo cáo",
-    url: "/reports",
-    icon: BarChart3,
+    title: "Cài đặt",
+    url: "/settings",
+    icon: Settings,
   },
 ]
 
