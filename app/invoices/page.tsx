@@ -320,7 +320,7 @@ export default function InvoicesPage() {
               </div>
 
               {/* Nút In hóa đơn */}
-              <div className="flex justify-center pt-2">
+              <div className="flex justify-center pt-2 no-print">
                 <Button onClick={() => window.print()} type="button">
                   In hóa đơn
                 </Button>
