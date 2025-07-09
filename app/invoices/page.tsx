@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Eye, Check, Send, FileText, Plus } from "lucide-react"
-import { invoiceService } from "@/lib/api/services"
-import { Invoice, InvoiceResponse } from "@/lib/api/types"
+import { invoiceService, settingsService, utilityReadingService } from "@/lib/api/services"
+import type { Invoice, InvoiceResponse, UtilityReading, Settings } from "@/lib/api/types"
 import { toast } from "sonner"
 
 function getRecentMonths(count: number = 12) {
@@ -68,12 +68,35 @@ export default function InvoicesPage() {
   const [summary, setSummary] = useState<InvoiceResponse['summary'] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [utilityReading, setUtilityReading] = useState<UtilityReading | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   const months = getRecentMonths()
 
   useEffect(() => {
     loadInvoices()
   }, [selectedMonth])
+
+  useEffect(() => {
+    if (selectedInvoice && selectedMonth) {
+      // Lấy UtilityReading cho phòng và tháng
+      utilityReadingService.getByMonth(selectedMonth)
+        .then((readings) => {
+          const reading = readings.find(
+            (r) => {
+              if (typeof r.room === 'string') return r.room === selectedInvoice.roomName;
+              return r.room.number === selectedInvoice.roomName;
+            }
+          );
+          setUtilityReading(reading || null);
+        });
+      // Lấy Settings
+      settingsService.get().then(setSettings);
+    } else {
+      setUtilityReading(null);
+      setSettings(null);
+    }
+  }, [selectedInvoice, selectedMonth]);
 
   const loadInvoices = async () => {
     try {
@@ -282,65 +305,97 @@ export default function InvoicesPage() {
           </DialogHeader>
           {selectedInvoice && (
             <div className="grid gap-4 py-4 print-invoice-modal">
-              <div className="text-center border-b pb-4">
-                <h3 className="text-lg font-bold">HÓA ĐƠN TIỀN PHÒNG</h3>
-                <p className="text-sm text-muted-foreground">
-                  Tháng {selectedMonth.split('-')[1]}/{selectedMonth.split('-')[0]}
-                </p>
-              </div>
-
-              <div className="grid gap-3">
-                <div className="flex justify-between">
-                  <span>Phòng:</span>
-                  <span className="font-medium">
-                    {selectedInvoice.roomName}
-                  </span>
+              {/* Header hóa đơn */}
+              <div className="text-center border-b pb-2">
+                <h3 className="text-xl font-bold">PHIẾU THU TIỀN TRỌ</h3>
+                <div className="flex justify-between text-sm mt-2">
+                  <span>Phòng số: {selectedInvoice.roomName}</span>
+                  <span>Thời gian: {selectedMonth.split('-')[1]}/{selectedMonth.split('-')[0]}</span>
                 </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="grid gap-2">
-                  <div className="flex justify-between">
-                    <span>Tiền phòng:</span>
-                    <span>{selectedInvoice.roomCharge.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tiền điện:</span>
-                    <span>{selectedInvoice.electricityCharge.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tiền nước:</span>
-                    <span>{selectedInvoice.waterCharge.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Phí khác:</span>
-                    <span>{selectedInvoice.otherCharges.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                  <div className="flex justify-between font-bold pt-2 border-t">
-                    <span>Tổng cộng:</span>
-                    <span>{selectedInvoice.totalAmount.toLocaleString("vi-VN")}đ</span>
-                  </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span>Số TK: {process.env.NEXT_PUBLIC_ACCOUNT_NO}</span>
+                  <span>{process.env.NEXT_PUBLIC_ACCOUNT_NAME}</span>
                 </div>
+                <div className="text-sm mt-1">{process.env.NEXT_PUBLIC_BANK_NAME || ''}</div>
               </div>
 
-              <div className="flex justify-between items-center pt-4 border-t">
+              {/* Bảng chi tiết hóa đơn */}
+              <div className="overflow-x-auto mt-2">
+                <table className="invoice-table w-full border border-black text-sm">
+                  <thead>
+                    <tr>
+                      <th className="border border-black px-1 py-1">STT</th>
+                      <th className="border border-black px-1 py-1">Nội dung</th>
+                      <th className="border border-black px-1 py-1">Chỉ số đầu</th>
+                      <th className="border border-black px-1 py-1">Chỉ số cuối</th>
+                      <th className="border border-black px-1 py-1">Số lượng</th>
+                      <th className="border border-black px-1 py-1">Đơn giá</th>
+                      <th className="border border-black px-1 py-1">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-black px-1 py-1 text-center">1</td>
+                      <td className="border border-black px-1 py-1">Tiền phòng</td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1 text-right">{selectedInvoice.roomCharge.toLocaleString("vi-VN")}đ</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-black px-1 py-1 text-center">2</td>
+                      <td className="border border-black px-1 py-1">Tiền điện</td>
+                      <td className="border border-black px-1 py-1 text-right">{utilityReading?.electricityStart ?? ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{utilityReading?.electricityEnd ?? ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{utilityReading?.electricityConsumption ?? ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{settings?.electricityUnitPrice ? settings.electricityUnitPrice.toLocaleString("vi-VN") : ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{selectedInvoice.electricityCharge.toLocaleString("vi-VN")}đ</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-black px-1 py-1 text-center">3</td>
+                      <td className="border border-black px-1 py-1">Tiền nước</td>
+                      <td className="border border-black px-1 py-1 text-right">{utilityReading?.waterStart ?? ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{utilityReading?.waterEnd ?? ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{utilityReading?.waterConsumption ?? ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{settings?.waterUnitPrice ? settings.waterUnitPrice.toLocaleString("vi-VN") : ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{selectedInvoice.waterCharge.toLocaleString("vi-VN")}đ</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-black px-1 py-1 text-center">4</td>
+                      <td className="border border-black px-1 py-1">Tiền rác</td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1"></td>
+                      <td className="border border-black px-1 py-1 text-right">{settings?.garbageCharge ? settings.garbageCharge.toLocaleString("vi-VN") : ''}</td>
+                      <td className="border border-black px-1 py-1 text-right">{selectedInvoice.otherCharges.toLocaleString("vi-VN")}đ</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Tổng cộng */}
+              <div className="flex justify-end mt-2 font-bold text-base">
+                Tổng cộng: {selectedInvoice.totalAmount.toLocaleString("vi-VN")}đ
+              </div>
+
+              {/* Trạng thái */}
+              <div className="flex justify-between items-center pt-2">
                 <div className="text-sm text-muted-foreground">Trạng thái:</div>
                 {getStatusBadge(selectedInvoice.status)}
               </div>
 
               {/* QR chuyển khoản chỉ hiện khi in */}
-              {selectedInvoice && (
-                <div className="print-qr flex flex-col items-center mt-6">
-                  <img
-                    src={getVietQRUrl(selectedInvoice.totalAmount, selectedMonth)}
-                    alt="QR chuyển khoản"
-                    style={{ width: 200, height: 200 }}
-                  />
-                  <div className="text-sm mt-2">
-                    Quét mã để thanh toán tiền phòng
-                  </div>
+              <div className="print-qr flex flex-col items-center mt-6">
+                <img
+                  src={getVietQRUrl(selectedInvoice.totalAmount, selectedMonth)}
+                  alt="QR chuyển khoản"
+                  style={{ width: 200, height: 200 }}
+                />
+                <div className="text-sm mt-2">
+                  Quét mã để thanh toán tiền phòng
                 </div>
-              )}
+              </div>
 
               {/* Nút In hóa đơn */}
               <div className="flex justify-center pt-2 no-print">
