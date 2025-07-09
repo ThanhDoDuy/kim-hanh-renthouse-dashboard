@@ -46,6 +46,15 @@ function getStatusBadge(status: string) {
   }
 }
 
+function getVietQRUrl(amount: number, month: string) {
+  const BANK_ID = process.env.NEXT_PUBLIC_BANK_ID;
+  const ACCOUNT_NO = process.env.NEXT_PUBLIC_ACCOUNT_NO;
+  const ACCOUNT_NAME = process.env.NEXT_PUBLIC_ACCOUNT_NAME;
+  const template = 'compact2';
+  const addInfo = `tien phong thang ${month.split('-')[1]}/${month.split('-')[0]}`;
+  return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(ACCOUNT_NAME || '')}`;
+}
+
 export default function InvoicesPage() {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const today = new Date()
@@ -318,6 +327,20 @@ export default function InvoicesPage() {
                 <div className="text-sm text-muted-foreground">Trạng thái:</div>
                 {getStatusBadge(selectedInvoice.status)}
               </div>
+
+              {/* QR chuyển khoản chỉ hiện khi in */}
+              {selectedInvoice && (
+                <div className="print-qr flex flex-col items-center mt-6">
+                  <img
+                    src={getVietQRUrl(selectedInvoice.totalAmount, selectedMonth)}
+                    alt="QR chuyển khoản"
+                    style={{ width: 200, height: 200 }}
+                  />
+                  <div className="text-sm mt-2">
+                    Quét mã để thanh toán tiền phòng
+                  </div>
+                </div>
+              )}
 
               {/* Nút In hóa đơn */}
               <div className="flex justify-center pt-2 no-print">
