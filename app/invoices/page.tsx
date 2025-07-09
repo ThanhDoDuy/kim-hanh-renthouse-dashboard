@@ -272,7 +272,7 @@ export default function InvoicesPage() {
             <DialogTitle>Chi tiết hóa đơn</DialogTitle>
           </DialogHeader>
           {selectedInvoice && (
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 print-invoice-modal">
               <div className="text-center border-b pb-4">
                 <h3 className="text-lg font-bold">HÓA ĐƠN TIỀN PHÒNG</h3>
                 <p className="text-sm text-muted-foreground">
@@ -317,6 +317,13 @@ export default function InvoicesPage() {
               <div className="flex justify-between items-center pt-4 border-t">
                 <div className="text-sm text-muted-foreground">Trạng thái:</div>
                 {getStatusBadge(selectedInvoice.status)}
+              </div>
+
+              {/* Nút In hóa đơn */}
+              <div className="flex justify-center pt-2">
+                <Button onClick={() => window.print()} type="button">
+                  In hóa đơn
+                </Button>
               </div>
             </div>
           )}
