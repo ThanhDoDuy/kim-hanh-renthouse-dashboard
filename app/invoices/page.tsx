@@ -47,9 +47,9 @@ function getStatusBadge(status: string) {
 }
 
 function getVietQRUrl(amount: number, month: string) {
-  const BANK_ID = process.env.NEXT_PUBLIC_BANK_ID;
-  const ACCOUNT_NO = process.env.NEXT_PUBLIC_ACCOUNT_NO;
-  const ACCOUNT_NAME = process.env.NEXT_PUBLIC_ACCOUNT_NAME;
+  const BANK_ID = process.env.NEXT_PUBLIC_BANK_ID || '970443';
+  const ACCOUNT_NO = process.env.NEXT_PUBLIC_ACCOUNT_NO || '02022122';
+  const ACCOUNT_NAME = process.env.NEXT_PUBLIC_ACCOUNT_NAME || 'NGUYEN THI HONG VAN';
   const template = 'compact2';
   const addInfo = `tien phong thang ${month.split('-')[1]}/${month.split('-')[0]}`;
   return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(ACCOUNT_NAME || '')}`;
