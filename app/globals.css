@@ -92,3 +92,34 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .print-invoice-modal, .print-invoice-modal * {
+    visibility: visible !important;
+  }
+  .print-invoice-modal {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 420px !important;
+    max-width: 100vw !important;
+    background: white !important;
+    z-index: 9999 !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08) !important;
+    border: 1.5px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    padding: 32px 24px !important;
+    margin: 0 !important;
+    font-size: 16px !important;
+  }
+  .print-invoice-modal h3 {
+    font-size: 20px !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
